@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+texture_tile*.png
+heightmap_tile*.png
+heightmap_tile*.raw
+user_unity/
+*.tif

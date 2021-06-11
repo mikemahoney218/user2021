@@ -1,0 +1,357 @@
+---
+title: "Virtual Environments:"
+subtitle: "Using R as a Frontend for 3D Rendering of Digital Landscapes"  
+author: 
+  - "Mike Mahoney"
+  - "Colin Beier"
+  - "Aidan Ackerman"
+date: '`r Sys.Date()`'
+output:
+  xaringan::moon_reader:
+    css: xaringan-themer.css
+    nature:
+      slideNumberFormat: "%current%"
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: true
+      seal: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(
+  fig.width=9, fig.height=3.5, fig.retina=3,
+  out.width = "100%",
+  cache = FALSE,
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  fig.show = TRUE,
+  hiline = TRUE
+)
+library(ggplot2)
+library(terrainr)
+library(sf)
+theme_set(theme(axis.text = element_blank()))
+```
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+
+style_duo_accent(
+  primary_color = "#26375b",
+  secondary_color = "#27686d",
+  inverse_header_color = "#FFFFFF"
+)
+```
+
+background-image: url("title.png")
+background-size: contain
+
+---
+
+# Outline
+
+### 1. What's terrainr?
+
+### 2. Why visualize in game engines?
+
+### 3. Why R?
+
+
+Slides available at 
+
+---
+class: inverse center middle
+
+# What's terrainr?
+
+---
+
+# What's terrainr?
+
+.pull-left[
+
+- New R package with two focuses:
+
+  1. Data access and retrieval
+  
+  2. Spatial data visualization
+
+<br />  
+
+- https://github.com/ropensci/terrainr
+
+]
+
+.pull-right[
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/ropensci/terrainr/raw/main/man/figures/logo.png")
+```
+
+]
+
+???
+Image: The hex logo of the terrainr package. A 3D rendered mountain (Mt. Elbert
+in Colorado) sits inside a black hexagonal border. The word "terrainr" floats
+above the mountain in the sky.
+
+---
+class: title
+background-image: url("clark_USGSNAIPPlus_1_1.png")
+
+
+# Data access and retrieval
+
+---
+
+
+```{r fig.width=8}
+library(sf)
+library(ggplot2)
+
+campsites <- "https://opendata.arcgis.com/datasets/06993a2f20bf42d382c8ce6bd54027c4_0.geojson"
+campsites <- read_sf(campsites)
+
+ggplot(campsites) + 
+  geom_sf()
+```
+
+???
+Image: A simple plot of campsite locations made using ggplot2. Twelve campsites 
+are represented as black points on a grey background, showing the spatial 
+arrangement of the sites.
+
+---
+
+```{r}
+library(terrainr)
+downloaded_data <- get_tiles(campsites,
+                             output_prefix = "bryce_canyon",
+                             services = c("elevation", "ortho"),
+                             resolution = 30)
+
+downloaded_data
+```
+
+---
+class: inverse title
+background-image: url("contour.png")
+
+# Spatial data visualization
+
+---
+
+.pull-left[
+
+```{r fig.width=4}
+library(raster)
+
+downloaded_data$elevation |> 
+  raster() |> 
+  plot()
+```
+
+]
+
+.pull-right[
+
+```{r fig.width=4}
+library(raster)
+
+downloaded_data$ortho |> 
+  stack() |> 
+  plotRGB(scale = 1)
+```
+
+]
+
+???
+Image: A simple map of elevation data next to a simple map of aerial 
+orthoimagery downloaded by terrainr for the area represented by our campsites,
+showing the tools available for plotting this data in the raster package.
+
+---
+
+```{r, fig.width=10}
+library(ggplot2)
+
+downloaded_data$elevation |> 
+  raster() |> 
+  as.data.frame(xy = TRUE) |> 
+  setNames(c("x", "y", "z")) |> 
+  ggplot(aes(x, y, fill = z)) + 
+    geom_raster() + 
+    scale_fill_gradientn(
+      colors = (terrain.colors(255, TRUE))
+      ) + 
+    coord_sf(crs = 4326)
+```
+
+???
+Image: The same map of elevation data reproduced using ggplot2.
+
+---
+
+```{r, fig.width=6}
+ggplot() + 
+  geom_spatial_rgb(data = downloaded_data$ortho,
+                   aes(x, y, r = red, b = blue, g = green)) +
+  coord_sf(crs = 4326)
+```
+
+???
+Image: The same map of orthoimagery reproduced using ggplot2.
+
+---
+
+```{r, fig.width=6}
+ggplot() + 
+  geom_spatial_rgb(data = downloaded_data$ortho,
+                   aes(x, y, r = red, b = blue, g = green)) +
+  coord_sf(crs = 4326) + 
+  geom_sf(data = campsites, color = "red")
+```
+
+???
+Image: The same map of orthoimagery, now with campsite positions overlaid in 
+ggplot2 to show the potential for using these data sources as base maps.
+
+---
+
+
+```{r}
+ggplot() + 
+  geom_spatial_rgb(data = "img.png",
+                   aes(x, y, r = red, b = blue, g = green)) + 
+  coord_fixed() + 
+  labs(caption = "Artwork by @allison_horst")
+```
+
+???
+Image: A comic by Allison Horst is plotted using ggplot2 used to demonstrate the
+ability to add arbitrary images to plots via terrainr functions.
+
+
+---
+
+.pull-left[
+
+```{r eval=FALSE}
+library(rayshader)
+library(tiff)
+library(raster)
+
+downloaded_data$ortho <- 
+  readTIFF(downloaded_data$ortho)
+downloaded_data$elevation <- 
+  raster_to_matrix(
+    raster(downloaded_data$elevation)
+    )
+
+rayshader::plot_3d(
+  downloaded_data$ortho,
+  downloaded_data$elevation,
+  zscale = 10,
+  windowsize = 1200,
+  zoom = 0.75,
+  theta = 25,
+  phi = 35,
+  solid = FALSE
+)
+```
+
+]
+
+.pull-right[
+
+```{r, echo = FALSE}
+knitr::include_graphics("BryceCanyon.png")
+```
+
+]
+
+???
+Image: A 3D map of Bryce Canyon National Park to show how data downloaded by 
+terrainr may be used with other 3D mapping libraries.
+
+---
+
+```{r, eval = FALSE}
+downloaded_data <- get_tiles(campsites,
+                             services = c("elevation", "ortho"))
+```
+
+---
+
+```{r, eval = FALSE}
+downloaded_data <- get_tiles(campsites,
+                             services = c("elevation", "ortho"))
+
+mapply(
+  merge_rasters,
+  downloaded_data,
+  c("elevation.tif", "orthoimagery.tif")
+)
+```
+
+---
+
+```{r, eval = FALSE}
+downloaded_data <- get_tiles(campsites,
+                             services = c("elevation", "ortho"))
+
+mapply(
+  merge_rasters,
+  downloaded_data,
+  c("elevation.tif", "orthoimagery.tif")
+)
+
+raster_to_raw_tiles("elevation.tif", "heightmap_tile", raw = TRUE)
+raster_to_raw_tiles("orthoimagery.tif", "texture_tile", raw = FALSE)
+```
+
+---
+
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics("vignette.png")
+```
+
+https://docs.ropensci.org/terrainr/articles/unity_instructions.html
+
+---
+class: inverse center middle
+
+# Why visualize in game engines?
+
+???
+Video: A 3D terrain surface of Bryce Canyon National Park rendered in the Unity
+3D game engine. I fly over the terrain surface and show how users might walk on
+the surface itself as a way to show the potential upsides of using game engines
+for 3D visualization.
+
+---
+class: inverse center middle
+
+# Why R?
+
+---
+
+# Thank you!
+
+This work was financially supported by the State University of New York via the ESF Pathways to Net Zero Carbon initiative.
+
+### More terrainr:
+
+`r icons::fontawesome("github")` [ropensci/terrainr](https://github.com/ropensci/terrainr)
+
+`r icons::fontawesome("book")` [https://docs.ropensci.org/terrainr/](https://docs.ropensci.org/terrainr/)
+
+### Find me online:
+
+`r icons::fontawesome("github")` [@mikemahoney218](https://github.com/mikemahoney218/)
+
+`r icons::fontawesome("twitter")` [@mikemahoney218](https://twitter.com/mikemahoney218/)
+
+`r icons::fontawesome("globe")` [mm218.dev](https://mm218.dev)
