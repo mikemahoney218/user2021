@@ -33,6 +33,7 @@ library(ggplot2)
 library(terrainr)
 library(sf)
 theme_set(theme(axis.text = element_blank()))
+xaringanExtra::use_webcam()
 ```
 
 ```{r xaringan-themer, include=FALSE, warning=FALSE}
@@ -59,7 +60,11 @@ background-size: contain
 ### 3. Why R?
 
 
-Slides available at 
+<br />
+
+<br />
+
+Slides available at https://github.com/mikemahoney218/user2021
 
 ---
 class: inverse center middle
@@ -107,16 +112,22 @@ background-image: url("clark_USGSNAIPPlus_1_1.png")
 ---
 
 
-```{r fig.width=8}
+```{r}
 library(sf)
-library(ggplot2)
 
 campsites <- "https://opendata.arcgis.com/datasets/06993a2f20bf42d382c8ce6bd54027c4_0.geojson"
 campsites <- read_sf(campsites)
+```
+
+--
+
+```{r fig.width=8}
+library(ggplot2)
 
 ggplot(campsites) + 
   geom_sf()
 ```
+
 
 ???
 Image: A simple plot of campsite locations made using ggplot2. Twelve campsites 
@@ -131,7 +142,11 @@ downloaded_data <- get_tiles(campsites,
                              output_prefix = "bryce_canyon",
                              services = c("elevation", "ortho"),
                              resolution = 30)
+```
 
+--
+
+```{r}
 downloaded_data
 ```
 
@@ -184,7 +199,7 @@ downloaded_data$elevation |>
   ggplot(aes(x, y, fill = z)) + 
     geom_raster() + 
     scale_fill_gradientn(
-      colors = (terrain.colors(255, TRUE))
+      colors = (rev(terrain.colors(255)))
       ) + 
     coord_sf(crs = 4326)
 ```
@@ -314,16 +329,35 @@ raster_to_raw_tiles("orthoimagery.tif", "texture_tile", raw = FALSE)
 
 ---
 
+```{r, eval = FALSE}
+downloaded_data <- get_tiles(campsites,
+                             services = c("elevation", "ortho"))
+
+mapply(
+  merge_rasters,
+  downloaded_data,
+  c("elevation.tif", "orthoimagery.tif")
+)
+
+raster_to_raw_tiles("elevation.tif", "heightmap_tile", raw = TRUE)
+raster_to_raw_tiles("orthoimagery.tif", "texture_tile", raw = FALSE)
+```
+
+```{r echo = FALSE}
+knitr::include_graphics("tiles.png")
+```
+
+???
+Image: A set of files ready for import into Unity, the outputs of the 
+raster_to_raw_tiles function.
+
+---
+
 ```{r echo=FALSE, out.width='100%'}
 knitr::include_graphics("vignette.png")
 ```
 
 https://docs.ropensci.org/terrainr/articles/unity_instructions.html
-
----
-class: inverse center middle
-
-# Why visualize in game engines?
 
 ???
 Video: A 3D terrain surface of Bryce Canyon National Park rendered in the Unity
@@ -338,20 +372,38 @@ class: inverse center middle
 
 ---
 
+# Two main reasons:
+
+### 1. Unmatched for spatial data wrangling.
+
+---
+
+# Two main reasons:
+
+#### 1. Unmatched for spatial data wrangling.
+
+### 2. It's where our users are.
+
+---
+
 # Thank you!
 
 This work was financially supported by the State University of New York via the ESF Pathways to Net Zero Carbon initiative.
 
-### More terrainr:
+#### More terrainr:
 
 `r icons::fontawesome("github")` [ropensci/terrainr](https://github.com/ropensci/terrainr)
 
 `r icons::fontawesome("book")` [https://docs.ropensci.org/terrainr/](https://docs.ropensci.org/terrainr/)
 
-### Find me online:
+#### Find me online:
 
 `r icons::fontawesome("github")` [@mikemahoney218](https://github.com/mikemahoney218/)
 
 `r icons::fontawesome("twitter")` [@mikemahoney218](https://twitter.com/mikemahoney218/)
 
 `r icons::fontawesome("globe")` [mm218.dev](https://mm218.dev)
+
+<br />
+
+Slides available at https://github.com/mikemahoney218/user2021
