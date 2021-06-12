@@ -6,7 +6,7 @@
     <meta name="author" content="Mike Mahoney" />
     <meta name="author" content="Colin Beier" />
     <meta name="author" content="Aidan Ackerman" />
-    <meta name="date" content="2021-06-11" />
+    <meta name="date" content="2021-06-12" />
     <script src="user2021_slides_files/header-attrs/header-attrs.js"></script>
     <script src="user2021_slides_files/xaringanExtra-webcam/webcam.js"></script>
     <script id="xaringanExtra-webcam-options" type="application/json">{"width":"200","height":"200","margin":"1em"}</script>
@@ -21,7 +21,7 @@ class: center, middle, inverse, title-slide
 ### Mike Mahoney
 ### Colin Beier
 ### Aidan Ackerman
-### 2021-06-11
+### 2021-06-12
 
 ---
 
@@ -32,6 +32,9 @@ class: center, middle, inverse, title-slide
 
 background-image: url("title.png")
 background-size: contain
+
+???
+Hi everyone! My name is Mike Mahoney, I'm a PhD student in environmental science at the State University of New York College of Environmental Science and Forestry, and I'm excited to be talking to you today about using R as a frontend for producing virtual environments and landscape visualizations in video game engines. 
 
 ---
 
@@ -50,10 +53,16 @@ background-size: contain
 
 Slides available at https://github.com/mikemahoney218/user2021
 
+???
+I'm going to be focusing today on the terrainr package as a way to retrieve spatial data for the United States and to visualize spatial data inside of video game engines. I also want to talk a little about the challenges of using game engines for data visualization, and then talk about why we think it's worthwhile to deal with those challenges and why we think R is the right language for the job.
+
 ---
 class: inverse center middle
 
 # What's terrainr?
+
+???
+So, first things first, what is terrainr?
 
 ---
 
@@ -80,6 +89,8 @@ class: inverse center middle
 ]
 
 ???
+terrainr is a new package focusing on the retrieval and visualization of spatial data. It can be used to download data for use in analysis, to visualize outputs of other spatial processing, or the two focuses can be combined to download and visualize data for areas within the United States. Importantly, though, is that those two focuses are both designed to integrate with the rest of the R spatial ecosystem -- so you can feed the data terrainr downloads to other R functions or visualize the outputs from non-terrainr workflows. The two halves can be used separately, or as a cohesive whole.
+
 Image: The hex logo of the terrainr package. A 3D rendered mountain (Mt. Elbert
 in Colorado) sits inside a black hexagonal border. The word "terrainr" floats
 above the mountain in the sky.
@@ -90,6 +101,13 @@ background-image: url("clark_USGSNAIPPlus_1_1.png")
 
 
 # Data access and retrieval
+
+???
+So starting with the data retrieval side of things, terrainr provides a standard API to access public domain spatial data for the entire United States, with data provided by the United States Geological Survey's National Map program. The National Map provides access to a number of data products for the entire United States, including elevation data accurate down to 3 meters or even 1 meter in some spots, as well as aerial orthoimagery and other basemap layers like contour lines and hydrography. 
+
+Now, each of those data products exists as a separate service from the National Map, which requires differently shaped queries, returns data in different formats, and might produce different types of errors. And so a lot of code in terrainr is focused on dealing with each of the different services. 
+
+But from the user's perspective, terrainr aims to provide a single, simple interface to download whatever data you want. The user just needs to specify their area of interest and the type of data they're looking to download.
 
 ---
 
@@ -116,6 +134,10 @@ ggplot(campsites) +
 
 
 ???
+So say for instance you have some sf object -- here I've got a geoJSON file of campsites in Bryce Canyon National Park, out in Utah, which I'm just reading directly from a data portal. 
+
+We can plot that with ggplot2 to see how our campsites are arranged.
+
 Image: A simple plot of campsite locations made using ggplot2. Twelve campsites 
 are represented as black points on a grey background, showing the spatial 
 arrangement of the sites.
@@ -146,11 +168,25 @@ downloaded_data
 ## [1] "bryce_canyon_USGSNAIPPlus_1_1.tif"
 ```
 
+???
+I can then pass that sf object directly to the `get_tiles` function from terrainr to download data from the National Map. 
+
+So here I'm specifying, using the "services" argument, that I want to download elevation data and orthoimagery for my area of interest. If I wanted to download contour lines, I'd just need to add "contours" to that vector; it's that simple to change between services. And I'm also specifying that I want to download data at a 30 meter resolution -- one of the very nice things about the National Map is that it will resample its data to whatever resolution you're after.
+
+And then the `get_tiles` function downloads the data and returns a list of where it's saved the files to. If your request is too large for the API, terrainr will automatically break it into pieces and save multiple images, so this list can help you identify how many tiles were returned and get their paths programatically.
+
+And for a lot of users, that's what terrainr is -- it's an easy interface to free, public domain spatial data for the United States.
+
 ---
 class: inverse title
 background-image: url("contour.png")
 
 # Spatial data visualization
+
+???
+But I personally get excited about the other half of the package, which focuses on visualizing spatial data, in both 2D and 3D. 
+
+Starting with the 2D, it's already pretty easy to plot most spatial data in R. 
 
 ---
 
@@ -185,6 +221,8 @@ downloaded_data$ortho |&gt;
 ]
 
 ???
+For single band rasters, like our elevation data, we can use the simple plot method from raster; if we're trying to plot multi-band images -- so, images with red, blue, and green values for each pixel -- we can use plotRGB. 
+
 Image: A simple map of elevation data next to a simple map of aerial 
 orthoimagery downloaded by terrainr for the area represented by our campsites,
 showing the tools available for plotting this data in the raster package.
@@ -210,6 +248,10 @@ downloaded_data$elevation |&gt;
 &lt;img src="user2021_slides_files/figure-html/unnamed-chunk-8-1.png" width="100%" /&gt;
 
 ???
+And we can also bring the elevation into ggplot2 pretty easily using `geom_raster`. 
+
+But it's a bit trickier to add multi-band images to ggplots, if we want to do things like add our orthoimagery to a map.
+
 Image: The same map of elevation data reproduced using ggplot2.
 
 ---
@@ -225,6 +267,10 @@ ggplot() +
 &lt;img src="user2021_slides_files/figure-html/unnamed-chunk-9-1.png" width="100%" /&gt;
 
 ???
+So terrainr introduces a new geom, `geom_spatial_rgb`, to do exactly that. 
+
+By providing either a RasterStack or a file that can be read in as a RasterStack, you can add arbitrary multi-band rasters to a ggplot. 
+
 Image: The same map of orthoimagery reproduced using ggplot2.
 
 ---
@@ -241,6 +287,10 @@ ggplot() +
 &lt;img src="user2021_slides_files/figure-html/unnamed-chunk-10-1.png" width="100%" /&gt;
 
 ???
+We can then go ahead and, say, add our campsites on top of this map with `geom_sf`, to give our simple map from earlier a little more context. This function makes it a lot easier to include base maps underneath maps made in ggplot2.
+
+As you might guess from the name, this function was designed with spatial data in mind, but there's actually no requirement that you use the function for spatial data, since most image formats can be read in as a RasterStack object. 
+
 Image: The same map of orthoimagery, now with campsite positions overlaid in 
 ggplot2 to show the potential for using these data sources as base maps.
 
@@ -259,6 +309,10 @@ ggplot() +
 &lt;img src="user2021_slides_files/figure-html/unnamed-chunk-11-1.png" width="100%" /&gt;
 
 ???
+That means this function is actually surprisingly flexible for adding any image to a ggplot, and I think there's a lot of interesting potential in off-label usage here that I'd expect future versions of terrainr to make a bit easier.
+
+So that's how this package interacts with 2D visualizations. But also, R has a very active ecosystem for 3D spatial visualizations, especially in the past few years. 
+
 Image: A comic by Allison Horst is plotted using ggplot2 used to demonstrate the
 ability to add arbitrary images to plots via terrainr functions.
 
@@ -301,6 +355,10 @@ rayshader::plot_3d(
 ]
 
 ???
+And I think it's worth mentioning that the parts of terrainr we've talked about so far work pretty well with those -- for instance, we can use the awesome rayshader library to make beautiful visualizations of our 30 meter surface, plotted using rgl entirely within our R session.
+
+terrainr offers another way to visualize these surfaces. Specifically, terrainr helps to transform data so that it can be brought into the Unity 3D game engine, producing high-resolution, fully physically rendered terrain surfaces. I'm really excited about the potential for visualizing spatial data in game engines, and I want to talk about that in a minute, but I think it's useful to walk through how these visualizations are actually produced first.
+
 Image: A 3D map of Bryce Canyon National Park to show how data downloaded by 
 terrainr may be used with other 3D mapping libraries.
 
@@ -311,6 +369,11 @@ terrainr may be used with other 3D mapping libraries.
 downloaded_data &lt;- get_tiles(campsites,
                              services = c("elevation", "ortho"))
 ```
+
+???
+So, first things first, we need to redownload our data at a 1 meter resolution. We could use any other data here -- any single band raster can be used as a heightmap, and any raster can be used as an image overlay -- but we'll stick with the same area for simplicity. 
+
+Because this is such a large area, `get_tiles` has to split our request into multiple files. 
 
 ---
 
@@ -325,6 +388,9 @@ mapply(
   c("elevation.tif", "orthoimagery.tif")
 )
 ```
+
+???
+So we'll use another terrainr function, `merge_rasters`, to merge those tiles into single files -- "elevation.tif" for our elevation data and "orthoimagery.tif" for our imagery.
 
 ---
 
@@ -342,6 +408,14 @@ mapply(
 raster_to_raw_tiles("elevation.tif", "heightmap_tile", raw = TRUE)
 raster_to_raw_tiles("orthoimagery.tif", "texture_tile", raw = FALSE)
 ```
+
+???
+Then we can use another terrainr function, `raster_to_raw_tiles`, to turn those files into a format we can import into our game engine.
+
+The Unity game engine expects our elevation data to be in a specific binary format, which gets saved as a dot raw file, so we'll set the argument raw to TRUE there. 
+
+Our orthoimagery doesn't need to be in that format, however, so we'll set raw to FALSE. 
+Those few lines of code are enough to download our data tiles, merge them into larger files, and then transform the data for Unity. 
 
 ---
 
@@ -363,6 +437,12 @@ raster_to_raw_tiles("orthoimagery.tif", "texture_tile", raw = FALSE)
 &lt;img src="tiles.png" width="100%" /&gt;
 
 ???
+And we end up with a number of files, containing either our elevation data to make our terrain surface or the images we'll use as overlays for the surface.
+
+The only thing we have left to do is import the tiles into Unity. 
+
+Now, in the very near future this is going to be handled by a function, but at the moment each tile needs to be brought in manually. 
+
 Image: A set of files ready for import into Unity, the outputs of the 
 raster_to_raw_tiles function.
 
@@ -373,21 +453,53 @@ raster_to_raw_tiles function.
 https://docs.ropensci.org/terrainr/articles/unity_instructions.html
 
 ???
+The process is documented in a vignette in the package and takes me about three minutes, so instead of making everyone watch me do that I'll go ahead and show you the end result.
+
 Video: A 3D terrain surface of Bryce Canyon National Park rendered in the Unity
 3D game engine. I fly over the terrain surface and show how users might walk on
 the surface itself as a way to show the potential upsides of using game engines
 for 3D visualization.
+
+We wind up with a terrain surface that looks like this. This is now inside the Unity game engine's user interface, and here I can use my mouse to pan across the image, or use my keyboard to fly over the surface and see different parts of our terrain, all interactively. 
+
+And I want to stress that these surfaces can be produced from any data product -- you can use any single-band raster for elevation, and any raster for the overlay.
+
+And so, this is our visualization! Now, I think this surface looks great, and it's pretty easy to produce this. 
+
+But I do think the obvious question is: why bring in Unity at all? After all, Unity is not capital-f Free software -- it doesn't cost money, but it's not permissively licensed like R -- and interacting with these game engines requires a completely separate skillset from the programming required to download and process spatial data. So why bother?
+
+There's a couple of reasons. 
+
+First off, Unity is incredibly efficient, and can handle massive landscapes with no problem. For instance, this surface here is a one-meter resolution landscape that goes about 13 kilometers in one direction and 10 kilometers in the other, so a total of 130 million individual pixels with their own coloration and elevation to render. And I can fly over this surface without my laptop fans kicking on.
+
+Unity is able to progressively render terrain at different levels of detail, so it's able to produce these massive high-resolution surfaces that can be a problem for R-based tools.
+
+Secondly, there's a lot of space to expand beyond these static surfaces in Unity. As I mentioned earlier, Unity is primarily used as a video game engine, and as such provides a lot of ways for users to interact with landscapes. 
+
+Our landscape is actually entirely physically rendered, so I can for instance add a small little script and actually create a "character" of sorts to walk across our landscape. This strikes me as being potentially really powerful, and a new way for users to interact with spatial visualizations.
+
+Now, at the moment adding characters requires a little bit of familiarity with the Unity UI, but we're planning on changing that; in the next few months, I hope to have a function to automatically create and add these characters on top of the world. Similarly, we're working on ways to plant data-defined forests and buildings on top of this surface from R, to visualize more than just terrain.
+
+That's the main reason I think this is an interesting approach to landscape visualization -- there's a lot of potential to use game engines for high resolution interactive visualizations, but up until now doing so has required a completely different skillset than most other data analysis or visualization workflows. 
+
+By building out ways to create visualizations in game engines from R, we can potentially make these tools more useful for scientific communication and improve the types of visualizations teams can actually take advantage of.
 
 ---
 class: inverse center middle
 
 # Why R?
 
+???
+Which then brings us to the last question I mentioned -- why R? This is a new project and we could have chosen any language for our frontend, but there's a few reasons that made R the clear choice for us.
+
 ---
 
 # Two main reasons:
 
 ### 1. Unmatched for spatial data wrangling.
+
+???
+Well, one of the big challenges with using game engines for visualization is that these game engines don't think of "data" in the same way we might as scientists. The idea of trying to create data-defined landscapes in these systems is pretty new, and there isn't much tooling to support data import and manipulation in these engines. So having R's incredible data manipulation tools to help us create these scenes is a huge help, and the R package ecosystem is unmatched for this type of project. Plus, it's a huge benefit to be able to get ideas and inspiration from the group of people working with spatial data and landscape visualization in R right now.
 
 ---
 
@@ -396,6 +508,9 @@ class: inverse center middle
 #### 1. Unmatched for spatial data wrangling.
 
 ### 2. It's where our users are.
+
+???
+But even more than that, R is where our users are. We're working with terrainr and related projects to help ecologists and environmental scientists visualize the places they work in, to try and help promote qualitative understandings of large-scale systems. Those researchers are already broadly familiar with the R ecosystem, given just how prevalent R is in environmental research. If our goal is to make these visualizations more approachable, then we need to meet our users where they are. And so that's our goal with terrainr and the projects we have coming down the line -- we want to make it easy for users to apply their current R skills to make visualizations in game engines, without ever needing to think about why that might be a tricky thing to do.
 
 ---
 
@@ -420,6 +535,16 @@ This work was financially supported by the State University of New York via the 
 &lt;br /&gt;
 
 Slides available at https://github.com/mikemahoney218/user2021
+
+???
+And with that said, I want to thank you for coming today! I also want to thank the State University of New York for supporting this project via the ESF Pathways to Net Zero Carbon initiative.
+
+If you'd like to learn more about terrainr, I included links to the GitHub repo and the documentation website in the slides, which are available from GitHub.
+
+You can find me at mikemahoney218 on both GitHub and Twitter.
+
+Thanks again, and I look forward to seeing you in the Q&amp;A session!
+
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
